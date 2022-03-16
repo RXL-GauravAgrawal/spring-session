@@ -8,11 +8,12 @@ buildscript {
     }
     dependencies {
         classpath "org.grails:grails-gradle-plugin:$grailsVersion"
+        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:2.14.2"
     }
 }
 
-version "2.0.0-RC1"
-group "org.grails.plugins"
+version "2.0.0-RC1-3.3x"
+group "com.rxlogix"
 
 apply plugin:"eclipse"
 apply plugin:"idea"
@@ -26,7 +27,7 @@ ext {
 
 repositories {
     mavenLocal()
-    maven { url "https://repo.grails.org/grails/repo" }
+    maven { url "https://repo.grails.org/grails/core" }
 }
 
 dependencyManagement {
@@ -48,6 +49,7 @@ dependencies {
     console "org.grails:grails-console"
 
     testCompile "org.grails:grails-plugin-testing"
+    testCompile "org.grails:grails-test-mixins:3.3.0"
     testCompile "org.grails.plugins:geb"
 
     testRuntime 'org.seleniumhq.selenium:selenium-chrome-driver:2.44.0'
@@ -60,27 +62,32 @@ dependencies {
 task wrapper(type: Wrapper) {
     gradleVersion = gradleWrapperVersion
 }
-grailsPublish {
-    // TODO: Provide values here
-    githubSlug = 'jeetmp3/spring-session'
-    license {
-        name = 'Apache-2.0'
-    }
-    title = "Spring Session Grails Plugin"
-    desc = "Provides support for SpringSession project"
-    developers = [jeetmp3:"Jitendra Singh"]
-    portalUser = ""
-    portalPassword = ""
-}
+publishing {
+    publications {
+        mavenJar(MavenPublication) {
+            pom.withXml {
+                def pomNode = asNode()
+                pomNode.dependencyManagement.replaceNode {}
 
-bintray {
-    pkg {
-        name = "$project.name"
-        issueTrackerUrl = "https://github.com/jeetmp3/$project.name/issues"
-        vcsUrl = "https://github.com/jeetmp3/$project.name"
-        version {
-            attributes = ['grails-plugin': "$project.group:$project.name"]
-            name = project.version
+                // simply remove dependencies without a version
+                // version-less dependencies are handled with dependencyManagement
+                // see https://github.com/spring-gradle-plugins/dependency-management-plugin/issues/8 for more complete solutions
+                pomNode.dependencies.dependency.findAll {
+                    it.version.text().isEmpty()
+                }.each {
+                    it.replaceNode {}
+                }
+            }
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            credentials {
+                username "gautam.malhotra"
+                password "rxlogix"
+            }
+            url "http://10.100.3.6:8080/nexus/content/repositories/common-component-snapshots/"
         }
     }
 }
